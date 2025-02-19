@@ -10,4 +10,4 @@ RUN pip3 install -r requirements.txt
 
 EXPOSE 8501
 
-ENTRYPOINT ["streamlit", "run", "app.py", "--server.port=7070", "--server.address=0.0.0.0"]
+ENTRYPOINT ["streamlit", "run", "app.py", "--server.port=7070", "--server.address=localhost"]
