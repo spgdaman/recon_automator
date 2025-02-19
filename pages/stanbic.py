@@ -98,18 +98,24 @@ def reconciler(erp_file, bank_file, match_scale):
                 axis=1
             )
 
-            if match_scale is None:
-                match_scale = 30
-                # Filter out records with low match percentage (optional threshold e.g., 50%)
-                filtered_df = merged_df[merged_df["Regex_Match_Percentage"] > match_scale]
-            else:
-                # Filter out records with low match percentage (optional threshold e.g., 50%)
-                filtered_df = merged_df[merged_df["Regex_Match_Percentage"] > match_scale]
+            filtered_df = merged_df[merged_df["Regex_Match_Percentage"] >= match_scale].reset_index(drop=True)
 
+            # **Remove matched transactions from bank_file**
+            unmatched_df = bank_file[
+                ~bank_file[[" Transaction_date ", "Match_Amount", "Transaction_description"]].apply(tuple, axis=1).isin(
+                    filtered_df[[" Transaction_date ", "Match_Amount", "Transaction_description"]].apply(tuple, axis=1)
+                )
+            ].reset_index(drop=True)
 
             # Final output
-            print(filtered_df)
-            return filtered_df
+            print(unmatched_df)
+            return (
+                st.markdown("### ✅ Matched Transactions"),
+                st.write(filtered_df),
+                st.markdown("### ❌ Unmatched Transactions"),
+                st.write(unmatched_df)
+            )
+
         else:
             print("No matching transactions found.")
 
@@ -119,6 +125,6 @@ def reconciler(erp_file, bank_file, match_scale):
 if bank_statement is None or erp_transactions is None:
     st.markdown("## ⚠️ :red[Please upload both files (Bank Statement and BRS Report) to get started]")
 else:
-    st.markdown("### ✅ :green[Below are the matched transactions for reconciliation, adjust the slider to adjust the % match.]")
-    match_scale = st.slider("Slide to select the % match", 30, 100)
-    st.write(reconciler(erp_transactions, bank_statement, match_scale))
+    st.markdown("### Adjust the slider to filter by the chosen % match.")
+    match_scale = st.slider("Slide to select the % match", 0, 100)
+    reconciler(erp_transactions, bank_statement, match_scale)
