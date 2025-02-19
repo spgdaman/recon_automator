@@ -8,6 +8,6 @@ RUN git clone https://github.com/spgdaman/recon_automator.git .
 
 RUN pip3 install -r requirements.txt
 
-EXPOSE 8501
+EXPOSE 7070
 
 ENTRYPOINT ["streamlit", "run", "app.py", "--server.port=7070", "--server.address=localhost"]
