@@ -38,18 +38,18 @@ def regex_match_percentage(erp_text, bank_text):
 
     return round(match_percentage, 2)  # Round to 2 decimal places
 
-st.title("🏦 Stanbic Reconciliation")
+st.title("💸 MPesa Reconciliation")
 
 # First file uploader with a unique key
-bank_statement = st.file_uploader("⬆️ Upload Bank Statement", type=[".csv"], key="bank_statement")
+bank_statement = st.file_uploader("⬆️ Upload MPesa Statement", type=["xls", "xlsx"], key="bank_statement")
 
 # Second file uploader with a unique key
-erp_transactions = st.file_uploader("⬆️ Upload BRS File", type=[".xls", ".xlsx"], key="erp_transactions")
+erp_transactions = st.file_uploader("⬆️ Upload BRS File", type=["xls", "xlsx"], key="erp_transactions")
 
 # Process files if uploaded
 if bank_statement:
     st.success("Bank Statement successfully uploaded!")
-    with st.expander("Below is the uploaded Bank Statement", expanded=False, icon="🔽"):
+    with st.expander("Below is the uploaded MPesa Statement", expanded=False, icon="🔽"):
         st.write(f"Bank Statement File: {bank_statement.name}")
         bank_statement = pd.read_csv(bank_statement)
         bank_statement["Debit"] = bank_statement["Debit"].fillna(0)

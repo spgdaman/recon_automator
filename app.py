@@ -1,10 +1,20 @@
 import streamlit as st
 
-st.set_page_config(layout='wide')
-st.title("Finance Automation App")
-st.caption("The purpose of this tool is to semi automate part of the bank reconciliation workflow done on paper")
+# st.set_page_config(layout='wide')
+st.set_page_config(page_title="Menu", page_icon="📌", layout="wide")
 
-st.sidebar.markdown("# Main page 🏠🎈")
-# st.sidebar.page_link("pages/stanbic.py", label="Stanbic", icon="1️⃣")
+# st.sidebar("Menu")
 
+pages = {
+    "Home":[st.Page("pages/home.py", icon="🏠", title="Home")],
+    "KES Reconciliation": [
+        st.Page("pages/stanbic.py", icon="🏦", title="Stanbic KES Reconciliation"),
+        st.Page("pages/dtb.py", icon="🏦", title="DTB KES Reconciliation"),
+    ],
+    "USD Reconciliation": [
+        st.Page("pages/stanbic_usd.py", icon="🏦", title="Stanbic USD Reconciliation"),
+    ],
+}
 
+pg = st.navigation(pages)
+pg.run()

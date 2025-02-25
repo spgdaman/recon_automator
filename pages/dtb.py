@@ -38,10 +38,10 @@ def regex_match_percentage(erp_text, bank_text):
 
     return round(match_percentage, 2)  # Round to 2 decimal places
 
-st.title("🏦 Stanbic Reconciliation")
+st.title("🏦 DTB Reconciliation")
 
 # First file uploader with a unique key
-bank_statement = st.file_uploader("⬆️ Upload Bank Statement", type=[".csv"], key="bank_statement")
+bank_statement = st.file_uploader("⬆️ Upload Bank Statement", type=[".xls", ".xlsx"], key="bank_statement")
 
 # Second file uploader with a unique key
 erp_transactions = st.file_uploader("⬆️ Upload BRS File", type=[".xls", ".xlsx"], key="erp_transactions")
@@ -51,12 +51,15 @@ if bank_statement:
     st.success("Bank Statement successfully uploaded!")
     with st.expander("Below is the uploaded Bank Statement", expanded=False, icon="🔽"):
         st.write(f"Bank Statement File: {bank_statement.name}")
-        bank_statement = pd.read_csv(bank_statement)
-        bank_statement["Debit"] = bank_statement["Debit"].fillna(0)
-        bank_statement["Credit"] = bank_statement["Credit"].fillna(0)
-        # bank_statement[" Transaction_date "] = pd.to_datetime(bank_statement[" Transaction_date "], format="%d/%m/%Y", errors="coerce")  # Convert to datetime
-        bank_statement[" Transaction_date "] = pd.to_datetime(bank_statement[" Transaction_date "], format="%d/%m/%Y")
-        # st.markdown("### 🔽 Below is the uploaded Bank Statement")
+        bank_statement = pd.read_excel(bank_statement)
+        bank_statement["Debits"] = bank_statement["Debits"].replace("-", "0").replace("'", "")
+        bank_statement["Debits"] = bank_statement["Debits"].astype(float)
+        bank_statement["Credits"] = bank_statement["Credits"].replace("-", "0")
+        bank_statement["Credits"] = bank_statement["Credits"].astype(float)
+        bank_statement["Transaction Details"] = bank_statement["Transaction Details"].astype("string")
+        bank_statement["TransactionDate"] = pd.to_datetime(bank_statement["TransactionDate"], format="%d/%m/%Y")
+        st.markdown("### 🔽 Below is the uploaded Bank Statement")
+        st.write(bank_statement.dtypes)
         st.write(bank_statement)
 
 if erp_transactions:
@@ -66,7 +69,10 @@ if erp_transactions:
         erp_transactions = pd.read_excel(erp_transactions)
         # erp_transactions["VOUCHER_DATE"] = pd.to_datetime(erp_transactions["VOUCHER_DATE"], format="%d/%m/%Y", errors="coerce")  # Convert to datetime
         erp_transactions["VOUCHER_DATE"] = pd.to_datetime(erp_transactions["VOUCHER_DATE"], format="%d/%m/%Y")
-        # st.markdown("### 🔽 Below is the uploaded BRS report")
+        erp_transactions["ENTITY_NAME"] = erp_transactions["ENTITY_NAME"].astype("string")
+        erp_transactions["NARRATION"] = erp_transactions["NARRATION"].astype("string")
+        st.markdown("### 🔽 Below is the uploaded BRS report")
+        st.write(erp_transactions.dtypes)
         st.write(erp_transactions)
 
 # Divider to act as a separator
@@ -75,17 +81,17 @@ st.divider()
 def reconciler(erp_file, bank_file, match_scale):
     if erp_file is not None and bank_file is not None:
         # Check if there are any nonzero values in the 'Credit' and 'Debit' columns
-        if (bank_file["Credit"] != 0).any() and (bank_file["Debit"] != 0).any():
+        if (bank_file["Credits"] != 0).any() and (bank_file["Debits"] != 0).any():
             print("It works!")
 
             # Add Match_Amount column in bank_file to dynamically pick Credit or Debit
-            bank_file["Match_Amount"] = np.where(bank_file["Credit"] != 0, bank_file["Credit"], bank_file["Debit"])
+            bank_file["Match_Amount"] = np.where(bank_file["Credits"] != 0, bank_file["Credits"], bank_file["Debits"])
 
             # Perform the merge (inner join with potential matches)
             merged_df = erp_file.merge(
-                bank_file[[" Transaction_date ", "Credit", "Debit", "Transaction_description", "Match_Amount"]],
+                bank_file[["TransactionDate", "Credits", "Debits", "Transaction Details", "Match_Amount"]],
                 left_on=["VOUCHER_DATE", "AMOUNT_SPECIFIC"],
-                right_on=[" Transaction_date ", "Match_Amount"],
+                right_on=["TransactionDate", "Match_Amount"],
                 how="inner",  # Using inner join to prevent mismatches
                 suffixes=("_ERP", "_BANK")
             )
@@ -93,8 +99,8 @@ def reconciler(erp_file, bank_file, match_scale):
             # Apply regex match percentage on both NARRATION and ENTITY_NAME
             merged_df["Regex_Match_Percentage"] = merged_df.apply(
                 lambda row: max(
-                    regex_match_percentage(row["NARRATION"], row["Transaction_description"]),
-                    regex_match_percentage(row["ENTITY_NAME"], row["Transaction_description"])
+                    regex_match_percentage(row["NARRATION"], row["Transaction Details"]),
+                    regex_match_percentage(row["ENTITY_NAME"], row["Transaction Details"])
                 ),
                 axis=1
             )
@@ -103,8 +109,8 @@ def reconciler(erp_file, bank_file, match_scale):
 
             # **Remove matched transactions from bank_file**
             unmatched_df = bank_file[
-                ~bank_file[[" Transaction_date ", "Match_Amount", "Transaction_description"]].apply(tuple, axis=1).isin(
-                    filtered_df[[" Transaction_date ", "Match_Amount", "Transaction_description"]].apply(tuple, axis=1)
+                ~bank_file[["TransactionDate", "Match_Amount", "Transaction Details"]].apply(tuple, axis=1).isin(
+                    filtered_df[["TransactionDate", "Match_Amount", "Transaction Details"]].apply(tuple, axis=1)
                 )
             ].reset_index(drop=True)
 

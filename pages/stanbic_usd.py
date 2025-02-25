@@ -54,9 +54,7 @@ if bank_statement:
         bank_statement = pd.read_csv(bank_statement)
         bank_statement["Debit"] = bank_statement["Debit"].fillna(0)
         bank_statement["Credit"] = bank_statement["Credit"].fillna(0)
-        # bank_statement[" Transaction_date "] = pd.to_datetime(bank_statement[" Transaction_date "], format="%d/%m/%Y", errors="coerce")  # Convert to datetime
-        bank_statement[" Transaction_date "] = pd.to_datetime(bank_statement[" Transaction_date "], format="%d/%m/%Y")
-        # st.markdown("### 🔽 Below is the uploaded Bank Statement")
+        bank_statement[" Transaction Date "] = pd.to_datetime(bank_statement[" Transaction Date "], format="%d/%m/%Y")
         st.write(bank_statement)
 
 if erp_transactions:
@@ -64,9 +62,7 @@ if erp_transactions:
     with st.expander("Below is the uploaded BRS report", expanded=False, icon="🔽"):
         st.write(f"BRS File: {erp_transactions.name}")
         erp_transactions = pd.read_excel(erp_transactions)
-        # erp_transactions["VOUCHER_DATE"] = pd.to_datetime(erp_transactions["VOUCHER_DATE"], format="%d/%m/%Y", errors="coerce")  # Convert to datetime
         erp_transactions["VOUCHER_DATE"] = pd.to_datetime(erp_transactions["VOUCHER_DATE"], format="%d/%m/%Y")
-        # st.markdown("### 🔽 Below is the uploaded BRS report")
         st.write(erp_transactions)
 
 # Divider to act as a separator
@@ -83,9 +79,9 @@ def reconciler(erp_file, bank_file, match_scale):
 
             # Perform the merge (inner join with potential matches)
             merged_df = erp_file.merge(
-                bank_file[[" Transaction_date ", "Credit", "Debit", "Transaction_description", "Match_Amount"]],
+                bank_file[[" Transaction Date ", "Credit", "Debit", "Transaction Description", "Match_Amount"]],
                 left_on=["VOUCHER_DATE", "AMOUNT_SPECIFIC"],
-                right_on=[" Transaction_date ", "Match_Amount"],
+                right_on=[" Transaction Date ", "Match_Amount"],
                 how="inner",  # Using inner join to prevent mismatches
                 suffixes=("_ERP", "_BANK")
             )
@@ -93,8 +89,8 @@ def reconciler(erp_file, bank_file, match_scale):
             # Apply regex match percentage on both NARRATION and ENTITY_NAME
             merged_df["Regex_Match_Percentage"] = merged_df.apply(
                 lambda row: max(
-                    regex_match_percentage(row["NARRATION"], row["Transaction_description"]),
-                    regex_match_percentage(row["ENTITY_NAME"], row["Transaction_description"])
+                    regex_match_percentage(row["NARRATION"], row["Transaction Description"]),
+                    regex_match_percentage(row["ENTITY_NAME"], row["Transaction Description"])
                 ),
                 axis=1
             )
@@ -103,8 +99,8 @@ def reconciler(erp_file, bank_file, match_scale):
 
             # **Remove matched transactions from bank_file**
             unmatched_df = bank_file[
-                ~bank_file[[" Transaction_date ", "Match_Amount", "Transaction_description"]].apply(tuple, axis=1).isin(
-                    filtered_df[[" Transaction_date ", "Match_Amount", "Transaction_description"]].apply(tuple, axis=1)
+                ~bank_file[[" Transaction Date ", "Match_Amount", "Transaction Description"]].apply(tuple, axis=1).isin(
+                    filtered_df[[" Transaction Date ", "Match_Amount", "Transaction Description"]].apply(tuple, axis=1)
                 )
             ].reset_index(drop=True)
 
