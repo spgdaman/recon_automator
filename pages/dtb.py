@@ -67,7 +67,6 @@ if erp_transactions:
     with st.expander("Below is the uploaded BRS report", expanded=False, icon="🔽"):
         st.write(f"BRS File: {erp_transactions.name}")
         erp_transactions = pd.read_excel(erp_transactions)
-        # erp_transactions["VOUCHER_DATE"] = pd.to_datetime(erp_transactions["VOUCHER_DATE"], format="%d/%m/%Y", errors="coerce")  # Convert to datetime
         erp_transactions["VOUCHER_DATE"] = pd.to_datetime(erp_transactions["VOUCHER_DATE"], format="%d/%m/%Y")
         erp_transactions["ENTITY_NAME"] = erp_transactions["ENTITY_NAME"].astype("string")
         erp_transactions["NARRATION"] = erp_transactions["NARRATION"].astype("string")
