@@ -38,7 +38,7 @@ def regex_match_percentage(erp_text, bank_text):
 
     return round(match_percentage, 2)  # Round to 2 decimal places
 
-st.title("💸 MPesa Reconciliation")
+st.title("💸 MPesa Unit 2 Reconciliation")
 
 # First file uploader with a unique key
 bank_statement = st.file_uploader("⬆️ Upload MPesa Statement", type=[".xls", ".xlsx"], key="bank_statement")
@@ -48,7 +48,7 @@ erp_transactions = st.file_uploader("⬆️ Upload Cash Sale Summary File", type
 
 # Process files if uploaded
 if bank_statement:
-    st.success("Bank Statement successfully uploaded!")
+    st.success("MPesa Statement successfully uploaded!")
     with st.expander("Below is the uploaded MPesa Statement", expanded=False, icon="🔽"):
         st.write(f"Bank Statement File: {bank_statement.name}")
         bank_statement = pd.read_excel(bank_statement)
@@ -72,7 +72,7 @@ if erp_transactions:
         erp_transactions["Paid Amount"] = erp_transactions["Paid Amount"].str.replace(",", "", regex=True)  # Remove commas
         erp_transactions["Paid Amount"] = erp_transactions["Paid Amount"].astype(float)  # Convert to float
         # erp_transactions["Invoice date"] = pd.to_datetime(erp_transactions["Invoice date"], format="%d/%m/%Y", errors="coerce")  # Convert to datetime
-        erp_transactions["Invoice date"] = pd.to_datetime(erp_transactions["Invoice date"], format="%d/%m/%Y")
+        erp_transactions["Invoice date"] = pd.to_datetime(erp_transactions["Invoice date"], format="%d/%m/%Y").fillna("")
         st.write(erp_transactions.dtypes)
         st.write(erp_transactions)
 

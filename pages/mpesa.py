@@ -48,7 +48,7 @@ erp_transactions = st.file_uploader("⬆️ Upload Cash Sale Summary File", type
 
 # Process files if uploaded
 if bank_statement:
-    st.success("Bank Statement successfully uploaded!")
+    st.success("MPesa Statement successfully uploaded!")
     with st.expander("Below is the uploaded MPesa Statement", expanded=False, icon="🔽"):
         st.write(f"Bank Statement File: {bank_statement.name}")
         bank_statement = pd.read_excel(bank_statement)
