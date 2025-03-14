@@ -131,7 +131,7 @@ def reconciler(erp_file, bank_file, match_scale):
         print("It doesn't work!")
     
 if bank_statement is None or erp_transactions is None:
-    st.markdown("## ⚠️ :red[Please upload both files (Bank Statement and BRS Report) to get started]")
+    st.markdown("## ⚠️ :red[Please upload both files (Bank Statement and Cash Sale Summary Report) to get started]")
 else:
     st.markdown("### Adjust the slider to filter by the chosen % match.")
     match_scale = st.slider("Slide to select the % match", 0, 100)
