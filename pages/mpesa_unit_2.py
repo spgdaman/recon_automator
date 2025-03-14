@@ -44,7 +44,7 @@ st.title("💸 MPesa Unit 2 Reconciliation")
 bank_statement = st.file_uploader("⬆️ Upload MPesa Statement", type=[".xls", ".xlsx"], key="bank_statement")
 
 # Second file uploader with a unique key
-erp_transactions = st.file_uploader("⬆️ Upload Cash Sale Summary File", type=[".xls", ".xlsx", ".csv"], key="erp_transactions")
+erp_transactions = st.file_uploader("⬆️ Upload POS Mobile Sales Listing File", type=[".xls", ".xlsx", ".csv"], key="erp_transactions")
 
 # Process files if uploaded
 if bank_statement:
@@ -65,8 +65,8 @@ if bank_statement:
 
 if erp_transactions:
     st.success("POS Mobile Sales Listing file successfully uploaded!")
-    with st.expander("Below is the uploaded Cash Sale Summary report", expanded=False, icon="🔽"):
-        st.write(f"Cash Sale Summary File: {erp_transactions.name}")
+    with st.expander("Below is the uploaded POS Mobile Sales Listing report", expanded=False, icon="🔽"):
+        st.write(f"POS Mobile Sales Listing File: {erp_transactions.name}")
         erp_transactions = pd.read_excel(erp_transactions)
         erp_transactions.columns = erp_transactions.columns.str.strip()
         erp_transactions["Date"] = pd.to_datetime(erp_transactions["Date"], format="%d-%b-%Y").dt.date # Convert to datetime
