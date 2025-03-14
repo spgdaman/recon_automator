@@ -44,7 +44,7 @@ st.title("💸 MPesa Unit 2 Reconciliation")
 bank_statement = st.file_uploader("⬆️ Upload MPesa Statement", type=[".xls", ".xlsx"], key="bank_statement")
 
 # Second file uploader with a unique key
-erp_transactions = st.file_uploader("⬆️ Upload Cash Sale Summary File", type=[".csv"], key="erp_transactions")
+erp_transactions = st.file_uploader("⬆️ Upload Cash Sale Summary File", type=[".xls", ".xlsx", ".csv"], key="erp_transactions")
 
 # Process files if uploaded
 if bank_statement:
@@ -55,31 +55,30 @@ if bank_statement:
         bank_statement["Paid In"] = bank_statement["Paid In"].fillna(0)
         bank_statement["Withdrawn"] = bank_statement["Withdrawn"].fillna(0)*-1
         # bank_statement[" Transaction_date "] = pd.to_datetime(bank_statement[" Transaction_date "], format="%d/%m/%Y", errors="coerce")  # Convert to datetime
-        bank_statement["Completion Time"] = pd.to_datetime(bank_statement["Completion Time"], errors="coerce")
+        # bank_statement["Completion Time"] = pd.to_datetime(bank_statement["Completion Time"], errors="coerce")
+        bank_statement["Completion Time"] = pd.to_datetime(bank_statement["Completion Time"], format="%d-%m-%Y %H:%M:%S")
         bank_statement["Completion Time"] = bank_statement["Completion Time"].dt.date
-        bank_statement["Completion Time"] = pd.to_datetime(bank_statement["Completion Time"], format="%d/%m/%Y", errors="coerce")
+        # bank_statement["Completion Time"] = pd.to_datetime(bank_statement["Completion Time"], format="%d/%m/%Y", errors="coerce")
         bank_statement = bank_statement[bank_statement["Details"] != "Pay merchant Charge"]
         st.write(bank_statement.dtypes)
         st.write(bank_statement)
 
 if erp_transactions:
-    st.success("Cash Sale Summary file successfully uploaded!")
+    st.success("POS Mobile Sales Listing file successfully uploaded!")
     with st.expander("Below is the uploaded Cash Sale Summary report", expanded=False, icon="🔽"):
         st.write(f"Cash Sale Summary File: {erp_transactions.name}")
-        erp_transactions = pd.read_csv(erp_transactions)
-        erp_transactions["Invoice No."] = erp_transactions["Invoice No."].astype(str)
-        erp_transactions["Paid Amount"] = erp_transactions["Paid Amount"].astype(str)  # Ensure it's string first
-        erp_transactions["Paid Amount"] = erp_transactions["Paid Amount"].str.replace(",", "", regex=True)  # Remove commas
-        erp_transactions["Paid Amount"] = erp_transactions["Paid Amount"].astype(float)  # Convert to float
-        # erp_transactions["Invoice date"] = pd.to_datetime(erp_transactions["Invoice date"], format="%d/%m/%Y", errors="coerce")  # Convert to datetime
-        erp_transactions["Invoice date"] = pd.to_datetime(erp_transactions["Invoice date"], format="%d/%m/%Y").fillna("")
+        erp_transactions = pd.read_excel(erp_transactions)
+        erp_transactions.columns = erp_transactions.columns.str.strip()
+        erp_transactions["Date"] = pd.to_datetime(erp_transactions["Date"], format="%d-%b-%Y").dt.date # Convert to datetime
+        erp_transactions["Confirmation"] = erp_transactions["Confirmation"].astype(str)
+        erp_transactions["Amount"] = erp_transactions["Amount"].astype(float)
         st.write(erp_transactions.dtypes)
         st.write(erp_transactions)
 
 # Divider to act as a separator
 st.divider()
 
-def reconciler(erp_file, bank_file, match_scale):
+def reconciler(erp_file, bank_file):
     if erp_file is not None and bank_file is not None:
         # Check if there are any nonzero values in the 'Credit' and 'Debit' columns
         if (bank_file["Withdrawn"] != 0).any() and (bank_file["Paid In"] != 0).any():
@@ -91,7 +90,7 @@ def reconciler(erp_file, bank_file, match_scale):
             # Perform the merge (inner join with potential matches)
             merged_df = erp_file.merge(
                 bank_file[["Completion Time", "Withdrawn", "Paid In", "Details", "Receipt No.", "Match_Amount"]],
-                left_on=["Invoice date", "Paid Amount"],
+                left_on=["Date", "Amount"],
                 right_on=["Completion Time", "Match_Amount"],
                 how="inner",  # Using inner join to prevent mismatches
                 suffixes=("_ERP", "_BANK")
@@ -99,14 +98,11 @@ def reconciler(erp_file, bank_file, match_scale):
 
             # Apply regex match percentage on both NARRATION and ENTITY_NAME
             merged_df["Regex_Match_Percentage"] = merged_df.apply(
-                lambda row: max(
-                    regex_match_percentage(row["Customer Name"], row["Details"]),
-                    regex_match_percentage(row["Reference No."], row["Receipt No."])
-                ),
+                lambda row: regex_match_percentage(row["Confirmation"], row["Receipt No."]),
                 axis=1
             )
 
-            filtered_df = merged_df[merged_df["Regex_Match_Percentage"] >= match_scale].reset_index(drop=True)
+            filtered_df = merged_df[merged_df["Regex_Match_Percentage"] == 100].reset_index(drop=True)
 
             # **Remove matched transactions from bank_file**
             unmatched_df = bank_file[
@@ -133,6 +129,6 @@ def reconciler(erp_file, bank_file, match_scale):
 if bank_statement is None or erp_transactions is None:
     st.markdown("## ⚠️ :red[Please upload both files (Bank Statement and BRS Report) to get started]")
 else:
-    st.markdown("### Adjust the slider to filter by the chosen % match.")
-    match_scale = st.slider("Slide to select the % match", 0, 100)
-    reconciler(erp_transactions, bank_statement, match_scale)
+    # st.markdown("### Adjust the slider to filter by the chosen % match.")
+    # match_scale = st.slider("Slide to select the % match", 0, 100)
+    reconciler(erp_transactions, bank_statement)
