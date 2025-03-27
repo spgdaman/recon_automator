@@ -52,14 +52,28 @@ if bank_statement:
     with st.expander("Below is the uploaded Bank Statement", expanded=False, icon="🔽"):
         st.write(f"Bank Statement File: {bank_statement.name}")
         bank_statement = pd.read_excel(bank_statement)
-        bank_statement["Debits"] = bank_statement["Debits"].replace("-", "0").replace("'", "")
-        bank_statement["Debits"] = bank_statement["Debits"].astype(float)
-        bank_statement["Credits"] = bank_statement["Credits"].replace("-", "0")
-        bank_statement["Credits"] = bank_statement["Credits"].astype(float)
+        # bank_statement.columns = bank_statement.columns.str.strip()
+        # st.write(bank_statement.columns)
+        bank_statement["Debits"] = (
+            bank_statement["Debits"]
+            .astype(str)  # Ensure it's a string before replacing
+            .str.replace(",", "", regex=True)  # Remove commas properly
+            .str.replace("'", "", regex=True)  # Remove any single quotes if present
+            .replace("-", "0")  # Replace dashes with zero
+            .astype(float)  # Convert to float
+        )
+        bank_statement["Credits"] = (
+            bank_statement["Credits"]
+            .astype(str)  # Ensure all values are treated as strings
+            .str.replace(",", "", regex=True)  # Remove commas
+            .replace("-", "0")  # Replace dashes with zero
+            .astype(float)  # Convert to float
+        )
         bank_statement["Transaction Details"] = bank_statement["Transaction Details"].astype("string")
-        bank_statement["TransactionDate"] = pd.to_datetime(bank_statement["TransactionDate"], format="%d/%m/%Y")
+        # bank_statement["Transaction Date"] = pd.to_datetime(bank_statement["Transaction Date"], format="%d/%m/%Y")
         st.markdown("### 🔽 Below is the uploaded Bank Statement")
-        st.write(bank_statement.dtypes)
+        # st.write(bank_statement.columns)
+        # st.write(bank_statement.dtypes)
         st.write(bank_statement)
 
 if erp_transactions:
