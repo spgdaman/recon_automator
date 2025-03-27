@@ -59,7 +59,7 @@ if bank_statement:
         bank_statement["Completion Time"] = bank_statement["Completion Time"].dt.date
         bank_statement["Completion Time"] = pd.to_datetime(bank_statement["Completion Time"], format="%d/%m/%Y", errors="coerce")
         bank_statement = bank_statement[bank_statement["Details"] != "Pay merchant Charge"]
-        st.write(bank_statement.dtypes)
+        # st.write(bank_statement.dtypes)
         st.write(bank_statement)
 
 if erp_transactions:
@@ -73,7 +73,7 @@ if erp_transactions:
         erp_transactions["Paid Amount"] = erp_transactions["Paid Amount"].astype(float)  # Convert to float
         # erp_transactions["Invoice date"] = pd.to_datetime(erp_transactions["Invoice date"], format="%d/%m/%Y", errors="coerce")  # Convert to datetime
         erp_transactions["Invoice date"] = pd.to_datetime(erp_transactions["Invoice date"], format="%d/%m/%Y")
-        st.write(erp_transactions.dtypes)
+        # st.write(erp_transactions.dtypes)
         st.write(erp_transactions)
 
 # Divider to act as a separator
