@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import re
+from datetime import timedelta
 from business_logic.auto import is_valid_csv_file_format, is_valid_excel_file_format, is_valid_pdf_file_format, InvalidFileFormatError, pdf_cleaner
 
 def longest_common_substring(s1, s2):
@@ -108,13 +109,52 @@ def reconciler(erp_file, bank_file, match_scale):
                 )
             ].reset_index(drop=True)
 
+            # ---- NEW LOGIC FOR "CHEQUE" MATCHING ----
+            cheque_unmatched = unmatched_df[unmatched_df["Transaction Description"].str.contains("CHEQUE", case=False, na=False)]
+
+            extended_matches = []
+
+            for _, bank_row in cheque_unmatched.iterrows():
+                date_range = (
+                    bank_row[" Transaction Date "] - timedelta(days=3),
+                    bank_row[" Transaction Date "] + timedelta(days=3)
+                )
+
+                candidates = erp_file[
+                    (erp_file["AMOUNT_SPECIFIC"] == bank_row["Match_Amount"]) &
+                    (erp_file["VOUCHER_DATE"].between(*date_range))
+                ]
+
+                for _, erp_row in candidates.iterrows():
+                    score = max(
+                        regex_match_percentage(erp_row["NARRATION"], bank_row["Transaction Description"]),
+                        regex_match_percentage(erp_row["ENTITY_NAME"], bank_row["Transaction Description"])
+                    )
+                    if score >= match_scale:
+                        extended_matches.append({**erp_row, **bank_row, "Regex_Match_Percentage": score})
+
+            extended_df = pd.DataFrame(extended_matches)
+
+            # Combine both sets of matched data
+            final_matched = pd.concat([filtered_df, extended_df], ignore_index=True)
+
+            # Recalculate unmatched
+            final_matched_tuples = final_matched[[" Transaction Date ", "Match_Amount", "Transaction Description"]].apply(tuple, axis=1)
+            final_unmatched = bank_file[
+                ~bank_file[[" Transaction Date ", "Match_Amount", "Transaction Description"]].apply(tuple, axis=1).isin(final_matched_tuples)
+            ].reset_index(drop=True)
+
             # Final output
             print(unmatched_df)
             return (
                 st.markdown("### ✅ Matched Transactions"),
                 st.write(filtered_df),
+                st.markdown("### ✅ Extended Matched Transactions"),
+                st.write(final_matched),
                 st.markdown("### ❌ Unmatched Transactions"),
-                st.write(unmatched_df)
+                st.write(unmatched_df),
+                st.markdown("### ❌ Final Unmatched Transactions"),
+                st.write(final_unmatched)
             )
 
         else:

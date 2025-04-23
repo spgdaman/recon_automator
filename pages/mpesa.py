@@ -47,18 +47,34 @@ bank_statement = st.file_uploader("⬆️ Upload MPesa Statement", type=[".xls",
 erp_transactions = st.file_uploader("⬆️ Upload Cash Sale Summary File", type=[".csv"], key="erp_transactions")
 
 # Process files if uploaded
+# if bank_statement:
+#     st.success("MPesa Statement successfully uploaded!")
+#     with st.expander("Below is the uploaded MPesa Statement", expanded=False, icon="🔽"):
+#         st.write(f"Bank Statement File: {bank_statement.name}")
+#         bank_statement = pd.read_excel(bank_statement)
+#         bank_statement["Paid In"] = bank_statement["Paid In"].fillna(0)
+#         bank_statement["Withdrawn"] = bank_statement["Withdrawn"].fillna(0)*-1
+#         # bank_statement[" Transaction_date "] = pd.to_datetime(bank_statement[" Transaction_date "], format="%d/%m/%Y", errors="coerce")  # Convert to datetime
+#         bank_statement["Completion Time"] = pd.to_datetime(bank_statement["Completion Time"], errors="coerce")
+#         bank_statement["Completion Time"] = bank_statement["Completion Time"].dt.date
+#         bank_statement["Completion Time"] = pd.to_datetime(bank_statement["Completion Time"], format="%d/%m/%Y", errors="coerce")
+#         bank_statement = bank_statement[bank_statement["Details"] != "Pay merchant Charge"]
+#         # st.write(bank_statement.dtypes)
+#         st.write(bank_statement)
+
 if bank_statement:
-    st.success("MPesa Statement successfully uploaded!")
+    st.success("GT Statement successfully uploaded!")
     with st.expander("Below is the uploaded MPesa Statement", expanded=False, icon="🔽"):
         st.write(f"Bank Statement File: {bank_statement.name}")
         bank_statement = pd.read_excel(bank_statement)
-        bank_statement["Paid In"] = bank_statement["Paid In"].fillna(0)
-        bank_statement["Withdrawn"] = bank_statement["Withdrawn"].fillna(0)*-1
+        bank_statement["Credit"] = bank_statement["Credit"].fillna(0)
+        bank_statement["Debit"] = bank_statement["Debit"].fillna(0)
         # bank_statement[" Transaction_date "] = pd.to_datetime(bank_statement[" Transaction_date "], format="%d/%m/%Y", errors="coerce")  # Convert to datetime
-        bank_statement["Completion Time"] = pd.to_datetime(bank_statement["Completion Time"], errors="coerce")
-        bank_statement["Completion Time"] = bank_statement["Completion Time"].dt.date
-        bank_statement["Completion Time"] = pd.to_datetime(bank_statement["Completion Time"], format="%d/%m/%Y", errors="coerce")
-        bank_statement = bank_statement[bank_statement["Details"] != "Pay merchant Charge"]
+        bank_statement["Trans. Date"] = pd.to_datetime(bank_statement["Trans. Date"], errors="coerce")
+        bank_statement["Trans. Date"] = bank_statement["Trans. Date"].dt.date
+        bank_statement["Trans. Date"] = pd.to_datetime(bank_statement["Trans. Date"], format="%d/%m/%Y", errors="coerce")
+        bank_statement = bank_statement[bank_statement["Remarks"].str.contains("Deposit from M-pesa", case=False, na=False)]
+        bank_statement["Receipt No."] = bank_statement["Remarks"].str.extract(r'M-pesa (\S+)')
         # st.write(bank_statement.dtypes)
         st.write(bank_statement)
 
@@ -72,7 +88,8 @@ if erp_transactions:
         erp_transactions["Paid Amount"] = erp_transactions["Paid Amount"].str.replace(",", "", regex=True)  # Remove commas
         erp_transactions["Paid Amount"] = erp_transactions["Paid Amount"].astype(float)  # Convert to float
         # erp_transactions["Invoice date"] = pd.to_datetime(erp_transactions["Invoice date"], format="%d/%m/%Y", errors="coerce")  # Convert to datetime
-        erp_transactions["Invoice date"] = pd.to_datetime(erp_transactions["Invoice date"], format="%d/%m/%Y")
+        # erp_transactions["Invoice date"] = pd.to_datetime(erp_transactions["Invoice date"], format="%d/%m/%Y")
+        erp_transactions["Invoice date"] = pd.to_datetime(erp_transactions["Invoice date"], dayfirst=True, errors="coerce")
         # st.write(erp_transactions.dtypes)
         st.write(erp_transactions)
 
@@ -82,17 +99,17 @@ st.divider()
 def reconciler(erp_file, bank_file, match_scale):
     if erp_file is not None and bank_file is not None:
         # Check if there are any nonzero values in the 'Credit' and 'Debit' columns
-        if (bank_file["Withdrawn"] != 0).any() and (bank_file["Paid In"] != 0).any():
+        if (bank_file["Credit"] != 0).any():
             print("It works!")
 
             # Add Match_Amount column in bank_file to dynamically pick Credit or Debit
-            bank_file["Match_Amount"] = np.where(bank_file["Withdrawn"] != 0, bank_file["Withdrawn"], bank_file["Paid In"])
+            bank_file["Match_Amount"] = np.where(bank_file["Debit"] != 0, bank_file["Debit"], bank_file["Credit"])
 
             # Perform the merge (inner join with potential matches)
             merged_df = erp_file.merge(
-                bank_file[["Completion Time", "Withdrawn", "Paid In", "Details", "Receipt No.", "Match_Amount"]],
+                bank_file[["Trans. Date", "Debit", "Credit", "Remarks", "Receipt No.", "Match_Amount"]],
                 left_on=["Invoice date", "Paid Amount"],
-                right_on=["Completion Time", "Match_Amount"],
+                right_on=["Trans. Date", "Match_Amount"],
                 how="inner",  # Using inner join to prevent mismatches
                 suffixes=("_ERP", "_BANK")
             )
@@ -100,7 +117,7 @@ def reconciler(erp_file, bank_file, match_scale):
             # Apply regex match percentage on both NARRATION and ENTITY_NAME
             merged_df["Regex_Match_Percentage"] = merged_df.apply(
                 lambda row: max(
-                    regex_match_percentage(row["Customer Name"], row["Details"]),
+                    regex_match_percentage(row["Customer Name"], row["Remarks"]),
                     regex_match_percentage(row["Reference No."], row["Receipt No."])
                 ),
                 axis=1
@@ -110,8 +127,8 @@ def reconciler(erp_file, bank_file, match_scale):
 
             # **Remove matched transactions from bank_file**
             unmatched_df = bank_file[
-                ~bank_file[["Completion Time", "Withdrawn", "Paid In", "Details", "Receipt No.", "Match_Amount"]].apply(tuple, axis=1).isin(
-                    filtered_df[["Completion Time", "Withdrawn", "Paid In", "Details", "Receipt No.", "Match_Amount"]].apply(tuple, axis=1)
+                ~bank_file[["Trans. Date", "Debit", "Credit", "Remarks", "Receipt No.", "Match_Amount"]].apply(tuple, axis=1).isin(
+                    filtered_df[["Trans. Date", "Debit", "Credit", "Remarks", "Receipt No.", "Match_Amount"]].apply(tuple, axis=1)
                 )
             ].reset_index(drop=True)
 
